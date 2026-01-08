@@ -29,6 +29,7 @@ from tempfile import mkstemp
 from paper import ArxivPaper
 from llm import set_global_llm
 import feedparser
+from keyword_filter import filter_papers, print_filter_stats
 
 def get_zotero_corpus(id:str,key:str) -> list[dict]:
     zot = zotero.Zotero(id, 'user', key)
@@ -78,14 +79,20 @@ def get_arxiv_paper(query:str, debug:bool=False) -> list[ArxivPaper]:
 
     else:
         logger.debug("Retrieve 5 arxiv papers regardless of the date.")
-        search = arxiv.Search(query='cat:cs.AI', sort_by=arxiv.SortCriterion.SubmittedDate)
+        search = arxiv.Search(query='cat:hep-ex', sort_by=arxiv.SortCriterion.SubmittedDate)
         papers = []
         for i in client.results(search):
             papers.append(ArxivPaper(i))
             if len(papers) == 5:
                 break
 
-    return papers
+    # Apply keyword filter
+    logger.info(f"Applying keyword filter to {len(papers)} papers...")
+    filtered_papers, filtered_count, stats = filter_papers(papers)
+    logger.info(f"Keyword filter removed {filtered_count} papers, {len(filtered_papers)} papers remain.")
+    print_filter_stats(stats)
+
+    return filtered_papers
 
 
 
