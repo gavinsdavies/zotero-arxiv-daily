@@ -35,5 +35,8 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
           MODEL_NAME: ${{ secrets.MODEL_NAME }}
           LANGUAGE: ${{ vars.LANGUAGE }}
+          USE_GROQ: ${{ vars.USE_GROQ }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DISABLE_KEYWORD_FILTER: "1"
         run: |
           uv run main.py --debug

@@ -1,8 +1,7 @@
 """
 Keyword filter for HEP-EX neutrino oscillation papers
 Pre-filters papers before expensive LLM processing to reduce computation time
-"""
-
+"""import os
 # Customize these keywords for your specific research interests
 HEP_EX_KEYWORDS = [
     # Neutrino Oscillations
@@ -63,6 +62,10 @@ def should_process_paper(title: str, abstract: str) -> bool:
     Returns:
         True if paper should be processed, False otherwise
     """
+    # Allow disabling filter via environment variable for testing
+    if os.environ.get("DISABLE_KEYWORD_FILTER", "0").lower() in ["1", "true", "yes"]:
+        return True
+        
     if not title and not abstract:
         return False
         
