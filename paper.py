@@ -12,6 +12,7 @@ from loguru import logger
 import tiktoken
 from contextlib import ExitStack
 from urllib.error import HTTPError
+from llm_groq import is_groq_available, generate_tldr_groq
 
 
 
@@ -182,36 +183,65 @@ class ArxivPaper:
             match = re.search(r'\\section\{Conclusion\}.*?(\\section|\\end\{document\}|\\bibliography|\\appendix|$)', content, flags=re.DOTALL)
             if match:
                 conclusion = match.group(0)
+        
         llm = get_llm()
-        prompt = """Given the title, abstract, introduction and the conclusion (if any) of a paper in latex format, generate a one-sentence TLDR summary in __LANG__:
         
-        \\title{__TITLE__}
-        \\begin{abstract}__ABSTRACT__\\end{abstract}
-        __INTRODUCTION__
-        __CONCLUSION__
-        """
-        prompt = prompt.replace('__LANG__', llm.lang)
-        prompt = prompt.replace('__TITLE__', self.title)
-        prompt = prompt.replace('__ABSTRACT__', self.summary)
-        prompt = prompt.replace('__INTRODUCTION__', introduction)
-        prompt = prompt.replace('__CONCLUSION__', conclusion)
-
-        # use gpt-4o tokenizer for estimation
-        enc = tiktoken.encoding_for_model("gpt-4o")
-        prompt_tokens = enc.encode(prompt)
-        prompt_tokens = prompt_tokens[:4000]  # truncate to 4000 tokens
-        prompt = enc.decode(prompt_tokens)
+        # Try Groq first if available
+        if is_groq_available():
+            logger.debug(f"Attempting TLDR generation with Groq API for {self.arxiv_id}")
+            tldr = generate_tldr_groq(
+                title=self.title,
+                abstract=self.summary,
+                intro=introduction,
+                conclusion=conclusion,
+                language=llm.lang
+            )
+            
+            if tldr:
+                logger.info(f"Successfully generated TLDR via Groq for {self.arxiv_id}")
+                return tldr
+            else:
+                logger.warning(f"Groq TLDR generation failed for {self.arxiv_id}, returning truncated abstract")
+        else:
+            logger.debug(f"Groq not available for {self.arxiv_id}, returning truncated abstract")
         
-        tldr = llm.generate(
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an assistant who perfectly summarizes scientific paper, and gives the core idea of the paper to the user.",
-                },
-                {"role": "user", "content": prompt},
-            ]
-        )
-        return tldr
+        # Graceful fallback: return truncated abstract
+        abstract = self.summary.strip()
+        if len(abstract) > 300:
+            return abstract[:297] + "..."
+        return abstract
+        
+        # Alternative: Full LLM fallback (commented out for performance)
+        # Uncomment below to enable expensive LLM generation when Groq fails
+        # prompt = """Given the title, abstract, introduction and the conclusion (if any) of a paper in latex format, generate a one-sentence TLDR summary in __LANG__:
+        # 
+        # \\title{__TITLE__}
+        # \\begin{abstract}__ABSTRACT__\\end{abstract}
+        # __INTRODUCTION__
+        # __CONCLUSION__
+        # """
+        # prompt = prompt.replace('__LANG__', llm.lang)
+        # prompt = prompt.replace('__TITLE__', self.title)
+        # prompt = prompt.replace('__ABSTRACT__', self.summary)
+        # prompt = prompt.replace('__INTRODUCTION__', introduction)
+        # prompt = prompt.replace('__CONCLUSION__', conclusion)
+        #
+        # # use gpt-4o tokenizer for estimation
+        # enc = tiktoken.encoding_for_model("gpt-4o")
+        # prompt_tokens = enc.encode(prompt)
+        # prompt_tokens = prompt_tokens[:4000]  # truncate to 4000 tokens
+        # prompt = enc.decode(prompt_tokens)
+        # 
+        # tldr = llm.generate(
+        #     messages=[
+        #         {
+        #             "role": "system",
+        #             "content": "You are an assistant who perfectly summarizes scientific paper, and gives the core idea of the paper to the user.",
+        #         },
+        #         {"role": "user", "content": prompt},
+        #     ]
+        # )
+        # return tldr
 
     @cached_property
     def affiliations(self) -> Optional[list[str]]:
