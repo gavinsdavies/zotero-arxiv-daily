@@ -164,9 +164,8 @@ if __name__ == '__main__':
     )
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     args = parser.parse_args()
-    assert (
-        not args.use_llm_api or args.openai_api_key is not None
-    )  # If use_llm_api is True, openai_api_key must be provided
+    # Note: OpenAI API key is now optional since Groq can be used instead,
+    # and there's a graceful fallback to truncated abstracts if neither is configured
     if args.debug:
         logger.remove()
         logger.add(sys.stdout, level="DEBUG")
