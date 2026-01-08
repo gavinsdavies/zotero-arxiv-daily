@@ -78,12 +78,12 @@ def get_arxiv_paper(query:str, debug:bool=False) -> list[ArxivPaper]:
         bar.close()
 
     else:
-        logger.debug("Retrieve 5 arxiv papers regardless of the date.")
-        search = arxiv.Search(query='cat:hep-ex', sort_by=arxiv.SortCriterion.SubmittedDate)
+        logger.debug("Retrieve 3 arxiv papers regardless of the date.")
+        search = arxiv.Search(query='cat:hep-ex', sort_by=arxiv.SortCriterion.SubmittedDate, max_results=3)
         papers = []
         for i in client.results(search):
             papers.append(ArxivPaper(i))
-            if len(papers) == 5:
+            if len(papers) == 3:
                 break
 
     # Apply keyword filter
